@@ -11,7 +11,10 @@ const getReview = async (req, res) => {
     res.send({ response });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to generate response" });
+    if (err.status === 429) {
+      return res.status(429).json({ error: "API Rate Limit Exceeded. Please try again in a minute." });
+    }
+    res.status(500).json({ error: err.message || "Failed to generate response" });
   }
 };
 
