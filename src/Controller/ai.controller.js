@@ -1,8 +1,10 @@
 import generateContent from "../services/ai.service.js";
+import User from "../models/user.model.js";
+import Code from "../models/code.model.js";
 
 const getReview = async (req, res) => {
   try {
-    const code = req.body.code;
+    const { code, userId, email } = req.body;
     
     // 1. Input Validation
     if (!code || typeof code !== 'string' || code.trim() === '') {
@@ -16,7 +18,24 @@ const getReview = async (req, res) => {
     // 2. Processing
     const response = await generateContent(code);
     
-    // 3. Successful Response
+    // 3. Database Operations (if User is logged in)
+    if (userId) {
+      // Ensure user exists
+      await User.findOneAndUpdate(
+        { clerkId: userId },
+        { clerkId: userId, email: email || '' },
+        { upsert: true, new: true }
+      );
+      
+      // Save code history
+      await Code.create({
+        userId: userId,
+        query: code,
+        response: response
+      });
+    }
+    
+    // 4. Successful Response
     return res.status(200).json({ 
       success: true,
       response: response 
@@ -25,7 +44,7 @@ const getReview = async (req, res) => {
   } catch (err) {
     console.error("[GetReview Error]:", err);
 
-    // 4. Detailed Error Handling
+    // 5. Detailed Error Handling
     const statusCode = err.status || err.response?.status || 500;
     let errorMessage = "An unexpected error occurred during code review.";
 
@@ -46,4 +65,19 @@ const getReview = async (req, res) => {
   }
 };
 
-export default { getReview };
+const getHistory = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
+    }
+    
+    const history = await Code.find({ userId }).sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, history });
+  } catch (err) {
+    console.error("[GetHistory Error]:", err);
+    return res.status(500).json({ success: false, message: "Failed to fetch history" });
+  }
+};
+
+export default { getReview, getHistory };

@@ -3,9 +3,22 @@ import aiRoutes from './routes/ai.routes.js'
 import cors from 'cors'
 const app = express()
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL, 
+    'http://localhost:5173',
+    'http://localhost:3000'
+].filter(Boolean);
+
 // Production-level CORS setup
 const corsOptions = {
-    origin: process.env.FRONTEND_URL || '*', // Specify frontend URL in production for security
+    origin: function (origin, callback) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin || allowedOrigins.includes(origin) || process.env.FRONTEND_URL === '*') {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true, // Allow cookies if needed
