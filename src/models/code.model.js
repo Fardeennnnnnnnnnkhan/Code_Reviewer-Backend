@@ -13,7 +13,15 @@ const codeSchema = new mongoose.Schema({
     response: {
         type: String,
         required: true
-    }
+    },
+    scores: {
+        readability: Number,
+        timeComplexity: Number,
+        spaceComplexity: Number,
+        bestPractices: Number,
+        security: Number
+    },
+    totalScore: Number
 }, { timestamps: true });
 
 const Code = mongoose.model('Code', codeSchema);

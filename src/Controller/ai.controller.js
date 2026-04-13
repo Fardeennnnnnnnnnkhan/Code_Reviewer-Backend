@@ -1,6 +1,7 @@
 import generateContent from "../services/ai.service.js";
 import User from "../models/user.model.js";
 import Code from "../models/code.model.js";
+import Activity from "../models/activity.model.js";
 
 const getReview = async (req, res) => {
   try {
@@ -16,7 +17,22 @@ const getReview = async (req, res) => {
     }
 
     // 2. Processing
-    const response = await generateContent(code);
+    const rawResponse = await generateContent(code);
+    let parsedResponse;
+    try {
+        parsedResponse = JSON.parse(rawResponse);
+    } catch (e) {
+        parsedResponse = { 
+            readability: 0, timeComplexity: 0, spaceComplexity: 0, bestPractices: 0, security: 0,
+            feedback: rawResponse, improvements: [] 
+        };
+    }
+    
+    const totalScore = (parsedResponse.readability || 0) + 
+                       (parsedResponse.timeComplexity || 0) + 
+                       (parsedResponse.spaceComplexity || 0) + 
+                       (parsedResponse.bestPractices || 0) + 
+                       (parsedResponse.security || 0);
     
     // 3. Database Operations (if User is logged in)
     if (userId) {
@@ -31,14 +47,34 @@ const getReview = async (req, res) => {
       await Code.create({
         userId: userId,
         query: code,
-        response: response
+        response: JSON.stringify(parsedResponse),
+        scores: {
+           readability: parsedResponse.readability || 0,
+           timeComplexity: parsedResponse.timeComplexity || 0,
+           spaceComplexity: parsedResponse.spaceComplexity || 0,
+           bestPractices: parsedResponse.bestPractices || 0,
+           security: parsedResponse.security || 0
+        },
+        totalScore
       });
+
+      // Update Activity
+      const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(Date.now() - tzOffset)).toISOString().split('T')[0];
+      const todayStr = localISOTime;
+      await Activity.findOneAndUpdate(
+        { userId, date: todayStr },
+        { $inc: { count: 1 } },
+        { upsert: true, new: true }
+      );
     }
     
     // 4. Successful Response
     return res.status(200).json({ 
       success: true,
-      response: response 
+      response: rawResponse,
+      parsedResponse: parsedResponse,
+      totalScore
     });
 
   } catch (err) {
