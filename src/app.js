@@ -1,6 +1,7 @@
 import express from 'express'
 import aiRoutes from './routes/ai.routes.js'
 import dashboardRoutes from './routes/dashboard.routes.js'
+import imageRoutes from './routes/image.routes.js'
 import cors from 'cors'
 const app = express()
 
@@ -41,5 +42,6 @@ app.get('/', (req, res) => {
 
 app.use('/ai', aiRoutes)
 app.use('/api', dashboardRoutes)
+app.use('/images', imageRoutes)
 
 export default app
